@@ -32,7 +32,7 @@ setup(
     keywords='pydantic elasticsearch mappings es, elastic',
     author='Sergey Malinkin',
     author_email='malinkinsa@gmail.com',
-    url="'https'://github.com/malinkinsa/pydantic-to-elastic",
+    url='https://github.com/malinkinsa/pydantic-to-elastic',
     install_requires=install_requires,
     entry_points={'console_scripts': ['pydantic2es = pydantic2es.main:main']},
     classifiers=classifiers,
