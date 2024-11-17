@@ -42,3 +42,36 @@ Execute the command for converting these models into mapping json:
 ```bash
 pydantic2es --input ./user_models.py --output_format pretty
 ```
+
+And you will obtain the following result:
+```json
+{
+    "mappings": {
+        "properties": {
+            "name": {
+                "type": "keyword"
+            },
+            "age": {
+                "type": "integer"
+            },
+            "address": {
+                "type": "nested",
+                "properties": {
+                    "street": {
+                        "type": "keyword"
+                    },
+                    "city": {
+                        "type": "keyword"
+                    },
+                    "zip_code": {
+                        "type": "keyword"
+                    }
+                }
+            },
+            "hobbies": {
+                "type": "keyword"
+            }
+        }
+    }
+}
+```
