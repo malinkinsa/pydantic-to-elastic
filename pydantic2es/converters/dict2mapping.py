@@ -17,16 +17,13 @@ def _create_mapping(data: dict, submodel_type: str, text_fields: List[str]) -> d
                 "type": "text"
             }
 
+        elif isinstance(value, dict):
+            mapping['mappings']['properties'][key] = {
+                "properties": _create_mapping(value, submodel_type, text_fields)["mappings"]["properties"]
+            }
+
         else:
-            if isinstance(value, dict):
-                mapping['mappings']['properties'][key] = {
-                    "type": submodel_type,
-                    "properties": {}
-                }
-                for k, v in value.items():
-                    mapping['mappings']['properties'][key]['properties'][k] = get_mapping_value(v)
-            else:
-                mapping['mappings']['properties'][key] = get_mapping_value(value)
+            mapping['mappings']['properties'][key] = get_mapping_value(value)
 
     return mapping
 
