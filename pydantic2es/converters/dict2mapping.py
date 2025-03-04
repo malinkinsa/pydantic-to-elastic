@@ -6,19 +6,19 @@ from pydantic2es.helpers.helpers import get_mapping_value
 def _create_mapping(data: dict, submodel_type: str, text_fields: List[str]) -> dict:
     mapping = {
         "mappings": {
-            "properties": {
-            }
+            "properties": {}
         }
     }
 
     for key, value in data.items():
         if key in text_fields:
             mapping['mappings']['properties'][key] = {
-                "type": "text"
+                "type": "keyword"
             }
 
         elif isinstance(value, dict):
             mapping['mappings']['properties'][key] = {
+                "type": submodel_type,
                 "properties": _create_mapping(value, submodel_type, text_fields)["mappings"]["properties"]
             }
 
