@@ -13,7 +13,7 @@ def _create_mapping(data: dict, submodel_type: str, text_fields: List[str]) -> d
     for key, value in data.items():
         if key in text_fields:
             mapping['mappings']['properties'][key] = {
-                "type": "keyword"
+                "type": "text"
             }
 
         elif isinstance(value, dict):
