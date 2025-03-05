@@ -24,24 +24,22 @@ def get_mapping_value(key: str) -> dict:
     else:
         return {"type": mappings_map.get(key, None)}
 
-def _make_dict(converted_models: dict[dict[str, str]], parent_models: str, child_models_list: List[str]) \
-        -> dict:
-    data_dict = converted_models[parent_models]
+def _make_dict(converted_models: dict[str, dict[str, str]], parent_model: str, child_models_list: List[str]) -> dict:
+    data_dict = converted_models[parent_model].copy()
+
     for key, value in data_dict.items():
-        matching_child = next((child for child in child_models_list if child in value), None)
-        if matching_child:
-            data_dict[key] = converted_models[matching_child]
+        if value in child_models_list:
+            data_dict[key] = _make_dict(converted_models, value, child_models_list)
 
     return data_dict
 
+
 def struct_dict(converted_models: dict[dict[str, str]]) -> List[dict[str, str]] | dict[str, dict[str, str]]:
-    models_name = [converted_model_name for converted_model_name in converted_models]
     child_models_list = [
-        model
-        for model in models_name
+        value
         for sub_dict in converted_models.values()
         for value in sub_dict.values()
-        if model in value
+        if value in converted_models
     ]
 
     parent_models_list = [
