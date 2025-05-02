@@ -1,9 +1,9 @@
+import importlib
 import sys
 
-from importlib.util import spec_from_file_location, module_from_spec
 from typing import get_origin, get_args, Union, Any
-from uuid import uuid4
 from inspect import isclass
+from pathlib import Path
 
 from pydantic2es.helpers.helpers import is_path_available
 
@@ -32,47 +32,77 @@ def _type_to_str(field_type: Any) -> str:
     return str(field_type)
 
 
-def _model_to_dict(model_cls) -> dict:
-    """
-    Convert Pydantic to dict
-    """
+def _model_to_dict(model_cls, seen_models=None) -> dict:
+    if seen_models is None:
+        seen_models = {}
+
     if not hasattr(model_cls, "__annotations__"):
         raise TypeError(f"{model_cls} is not a Pydantic model or does not have annotations.")
 
     model_structure = {}
     for field_name, field_type in model_cls.__annotations__.items():
-        model_structure[field_name] = _type_to_str(field_type)
+        try:
+            type_str = _type_to_str(field_type)
+
+            if type_str != "NoneType":
+                model_structure[field_name] = type_str
+
+                args = get_args(field_type)
+                if hasattr(field_type, '__annotations__'):
+                    seen_models[field_type.__name__] = _model_to_dict(field_type, seen_models)
+                for arg in args:
+                    if hasattr(arg, '__annotations__'):
+                        seen_models[arg.__name__] = _model_to_dict(arg, seen_models)
+
+        except Exception as e:
+            print(f"Unexpected error for field {field_name}: {e}")
+            continue
 
     return model_structure
 
 
-def _get_model_classes(path: str) -> dict[dict]:
+def _get_model_classes(path: str) -> dict:
     """
-    Import pydantic models and return dict[name, class].
+    Import Pydantic models and return dict[name, class].
     """
-    if is_path_available(path):
-        uniq_name = uuid4().hex
+    if not is_path_available(path):
+        raise ValueError(f"Model file {path} does not exist.")
 
-        spec = spec_from_file_location(uniq_name, path)
-        module = module_from_spec(spec)
-        sys.modules[uniq_name] = module
-        spec.loader.exec_module(module)
+    abs_path = Path(path).resolve()
+    module_dir = abs_path.parent
+    module_name = abs_path.stem
+
+    sys.path.insert(0, str(module_dir.parent))
+
+    try:
+        imported_module = importlib.import_module(module_name)
 
         available_classes = {
             name: cls
-            for name, cls in vars(module).items()
-            if isclass(cls) and cls.__module__ == uniq_name
+            for name, cls in vars(imported_module).items()
+            if isclass(cls)
+               and cls.__module__ == imported_module.__name__
         }
 
         result = _convert_model_classes_to_dict(available_classes)
 
         return result
 
-    else:
-        raise ValueError(f"Model file {path} is not exist.")
+    finally:
+        if sys.path[0] == str(module_dir.parent):
+            sys.path.pop(0)
 
 def _convert_model_classes_to_dict(model_classes: dict) -> dict:
-    """
-    Convert dict[ModelMetaclass] in to dict[dict].
-    """
-    return {name: _model_to_dict(cls) for name, cls in model_classes.items()}
+    result = {}
+    seen_models = {}
+
+    for name, cls in model_classes.items():
+        model_dict = _model_to_dict(cls, seen_models)
+        if model_dict:
+            result[name] = model_dict
+
+    for name, struct in seen_models.items():
+        if name not in result and struct:
+            result[name] = struct
+
+    return result
