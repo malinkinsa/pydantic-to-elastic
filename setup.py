@@ -24,7 +24,7 @@ install_requires = [
 
 setup(
     name='pydantic-to-elastic',
-    version='0.0.2',
+    version='0.0.3',
     description='A simple CLI utility for converting Pydantic models to Elasticsearch mappings',
     license='MIT',
     long_description=readme(),
