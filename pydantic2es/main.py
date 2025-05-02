@@ -12,7 +12,7 @@ from pydantic2es.helpers.helpers import struct_dict
 
 def _parse_cli_args(args: List[str] = None) -> Namespace:
     """
-    Parses command-line arguments for the pydantic2ts utility.
+    Parses command-line arguments for the pydantic2elastic utility.
     """
     parser = ArgumentParser(
         prog="pydantic2es",
@@ -62,6 +62,13 @@ def _parse_cli_args(args: List[str] = None) -> Namespace:
         default=[],
         help="List of fields that must be of type 'text'. Can be specified multiple times.",
     )
+    parser.add_argument(
+        "--flattened_fields",
+        type=str,
+        action="append",
+        default=[],
+        help="List of fields that must be of type 'flattened'. Can be specified multiple times.",
+    )
 
     return parser.parse_args(args)
 
@@ -73,10 +80,21 @@ def main() -> None:
     args = _parse_cli_args()
     _check_args(args)
 
+    if len(args.text_fields) == 1 and ',' in args.text_fields[0]:
+        args.text_fields = args.text_fields[0].split(',')
+
+    if len(args.flattened_fields) == 1 and ',' in args.text_fields[0]:
+        args.flattened_fields = args.flattened_fields[0].split(',')
+
+    static_fields = {
+        'text': args.text_fields,
+        'flattened': args.flattened_fields,
+    }
+
     mapping_data = dict_to_mapping(
         struct_dict(models_to_dict(args.input)),
         args.submodel_type,
-        args.text_fields
+        static_fields
     )
 
     output_data = (
