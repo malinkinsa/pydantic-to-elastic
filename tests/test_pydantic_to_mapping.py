@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 from pydantic2es.converters.pydantic2mapping import (
     UnsupportedTypeError,
+    _annotation_mapping,
     model_to_mapping,
 )
 
@@ -112,10 +113,25 @@ def test_incompatible_union_is_an_error():
 
 def test_recursive_model_is_an_error():
     class Node(BaseModel):
-        children: list["Node"] = []
+        children: list["Node"] = Field(default_factory=list)
 
     with pytest.raises(UnsupportedTypeError, match="recursive model"):
         model_to_mapping(Node)
+
+
+def test_unresolved_string_self_reference_is_reported_as_recursive():
+    class Node(BaseModel):
+        children: list["Node"] = Field(default_factory=list)
+
+    with pytest.raises(UnsupportedTypeError, match="recursive model"):
+        _annotation_mapping(
+            "Node",
+            "auto",
+            {"text": set(), "flattened": set()},
+            "children",
+            (Node,),
+            in_collection=True,
+        )
 
 
 def test_root_model_is_rejected_instead_of_creating_fake_root_property():

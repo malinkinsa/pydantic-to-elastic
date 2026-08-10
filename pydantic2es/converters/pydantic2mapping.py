@@ -132,6 +132,27 @@ def _annotation_mapping(
     *,
     in_collection: bool,
 ) -> dict[str, Any]:
+    if isinstance(annotation, str):
+        referenced_name = annotation.strip("'\"")
+        recursive_model = next(
+            (
+                model
+                for model in reversed(visiting)
+                if referenced_name in {model.__name__, model.__qualname__}
+            ),
+            None,
+        )
+        if recursive_model is not None:
+            cycle = " -> ".join(
+                model.__name__ for model in (*visiting, recursive_model)
+            )
+            raise _unsupported(
+                annotation,
+                field_path,
+                f"recursive model: {cycle}",
+            )
+        raise _unsupported(annotation, field_path, "unresolved forward reference")
+
     origin = get_origin(annotation)
     arguments = get_args(annotation)
 
