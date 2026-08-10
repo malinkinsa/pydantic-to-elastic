@@ -34,3 +34,16 @@ def test_struct_dict_user_address(converted_models):
     assert result["name"] == "str"
     assert result["age"] == "int"
     assert result["hobbies"] == "list[str]"
+
+
+def test_struct_dict_expands_list_of_models(converted_models):
+    converted_models["User"]["addresses"] = "list[Address]"
+
+    result = struct_dict(converted_models)
+
+    assert result["addresses"] == converted_models["Address"]
+
+
+def test_struct_dict_rejects_recursive_models():
+    with pytest.raises(ValueError, match="recursive"):
+        struct_dict({"Node": {"children": "list[Node]"}})

@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pydantic-to-elastic"
+version = "0.1.0"
+description = "Convert Pydantic 2 models to Elasticsearch mappings"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "Sergey Malinkin", email = "malinkinsa@gmail.com"},
+]
+keywords = ["pydantic", "elasticsearch", "mapping", "cli"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = ["pydantic>=2.0,<3"]
+
+[project.optional-dependencies]
+test = ["pytest>=8,<9"]
+
+[project.scripts]
+pydantic2es = "pydantic2es.main:main"
+
+[project.urls]
+Homepage = "https://github.com/malinkinsa/pydantic-to-elastic"
+Repository = "https://github.com/malinkinsa/pydantic-to-elastic"
+
+[tool.setuptools.packages.find]
+include = ["pydantic2es*"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]

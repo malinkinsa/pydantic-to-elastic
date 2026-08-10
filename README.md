@@ -1,78 +1,136 @@
 # pydantic-to-elastic
 
-A simple CLI utility for converting Pydantic models to Elasticsearch mappings.
+A CLI and Python library that converts Pydantic 2 models into Elasticsearch
+mappings.
 
-### Installation
+## Installation
 
-#### From source
 ```bash
-git clone https://github.com/malinkinsa/pydantic-to-elastic.git && cd pydantic-to-elastic
+pip install pydantic-to-elastic
+```
+
+From source:
+
+```bash
+git clone https://github.com/malinkinsa/pydantic-to-elastic.git
+cd pydantic-to-elastic
 pip install .
 ```
 
-### CLI options
-| Prop               | Description                                                                                                                        | Required | Default value |
-|:-------------------|:-----------------------------------------------------------------------------------------------------------------------------------|:---------|:--------------|
-| --input            | Path to the file containing Pydantic models.                                                                                       | True     |               |
-| --output           | Output type of result. Possible values: "console" or "file".                                                                       | False    | console       |
-| --output_path      | Path and filename to save the output file (required if --output is set to 'file').                                                 | False    |               |
-| --output_format    | Output format for JSON data. Use 'json' for compact single-line JSON or 'pretty' for pretty-printed JSON with 4-space indentation. | False    | json          |
-| --submodel_type    | Specifies the submodel type. Possible values: "nested" or "object"                                                                 | False    | nested        |
-| --text_fields      | List of fields that must be of type 'text'. Can be specified multiple times.                                                       | False    |               |               |
-| --flattened_fields | List of fields that must be of type 'flattened'. Can be specified multiple times.                                                  | False    |               |
+For development:
 
-### Usage
-For example, you have a model `user_models.py`
+```bash
+pip install -e '.[test]'
+pytest
+```
+
+## Usage
+
+Given `user_models.py`:
+
 ```python
-from pydantic import BaseModel
-from typing import List
+from datetime import datetime
+from pydantic import BaseModel, Field
+
 
 class Address(BaseModel):
-    street: str
     city: str
     zip_code: str
 
+
 class User(BaseModel):
-    name: str
-    age: int
+    name: str = Field(alias="displayName")
     address: Address
-    hobbies: List[str]
+    previous_addresses: list[Address]
+    created_at: datetime
 ```
 
-Execute the command for converting these models into mapping json:
+Run:
+
 ```bash
 pydantic2es --input ./user_models.py --output_format pretty
 ```
 
-And you will obtain the following result:
+The single root model is detected automatically. Singular submodels become
+`object` fields and collections of submodels become `nested` fields:
+
 ```json
 {
     "mappings": {
         "properties": {
-            "name": {
-                "type": "keyword"
-            },
-            "age": {
-                "type": "integer"
-            },
+            "displayName": {"type": "keyword"},
             "address": {
-                "type": "nested",
+                "type": "object",
                 "properties": {
-                    "street": {
-                        "type": "keyword"
-                    },
-                    "city": {
-                        "type": "keyword"
-                    },
-                    "zip_code": {
-                        "type": "keyword"
-                    }
+                    "city": {"type": "keyword"},
+                    "zip_code": {"type": "keyword"}
                 }
             },
-            "hobbies": {
-                "type": "keyword"
-            }
+            "previous_addresses": {
+                "type": "nested",
+                "properties": {
+                    "city": {"type": "keyword"},
+                    "zip_code": {"type": "keyword"}
+                }
+            },
+            "created_at": {"type": "date", "ignore_malformed": true}
         }
     }
 }
 ```
+
+## CLI options
+
+| Option | Description | Default |
+|---|---|---|
+| `--input PATH` | Python file containing Pydantic models; required | — |
+| `--model NAME` | Root model to convert; repeat or comma-separate for several | auto-detect |
+| `--output console\|file` | Output destination | `console` |
+| `--output_path PATH` | Destination filename; required for file output | — |
+| `--output_format json\|pretty` | Compact or indented JSON | `json` |
+| `--submodel_type auto\|nested\|object` | Submodel mapping policy | `auto` |
+| `--text_fields FIELD` | Force names or dotted paths to `text` | — |
+| `--flattened_fields FIELD` | Force names or dotted paths to `flattened` | — |
+
+Field options may be repeated or comma-separated:
+
+```bash
+pydantic2es \
+  --input ./user_models.py \
+  --text_fields displayName,address.city \
+  --flattened_fields metadata
+```
+
+A bare field name applies at every nesting level. A dotted path such as
+`address.city` applies only at that path. Assigning the same selector to both
+`text` and `flattened` is an error.
+
+When a file contains several independent root models, select one explicitly:
+
+```bash
+pydantic2es --input ./models.py --model User
+```
+
+If `--model` is repeated, the output is keyed by model name.
+
+## Python API
+
+```python
+from pydantic2es import load_model_classes, model_to_mapping
+
+models = load_model_classes("user_models.py")
+mapping = model_to_mapping(models["User"])
+```
+
+Supported annotations include Pydantic submodels, optional fields, lists and
+sets, dictionaries, `Literal`, string/numeric enums, `datetime`, `date`, UUID,
+Decimal, bytes, and standard scalar types. Elasticsearch has no direct mapping
+for every possible Python union or custom class; unsupported or ambiguous types
+produce a descriptive error instead of emitting `"type": null`.
+
+Recursive models are rejected because an Elasticsearch mapping must be finite.
+
+## Security
+
+The input Python file is imported and therefore executes its top-level code.
+Only convert model files you trust.
