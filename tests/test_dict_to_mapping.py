@@ -35,6 +35,7 @@ def second_sample():
     }
 
 def test_dict_to_mapping(first_sample, second_sample):
+    # Deprecated keyword remains supported for users of the original library API.
     first_mapping = dict_to_mapping(first_sample, 'nested', text_fields=[])
     second_mapping = dict_to_mapping(second_sample, 'nested', text_fields=[])
 
@@ -199,3 +200,40 @@ def test_dict_to_mapping_with_test_and_object(first_sample, second_sample):
 
     assert second_mapping == expected_second_mapping
     assert first_mapping == first_expected_mapping
+
+
+def test_dict_to_mapping_static_fields_and_dotted_paths(first_sample):
+    mapping = dict_to_mapping(
+        first_sample,
+        "object",
+        {"text": ["address.city"], "flattened": ["address"]},
+    )
+
+    # An override on the parent intentionally replaces its properties.
+    assert mapping["mappings"]["properties"]["address"] == {"type": "flattened"}
+
+
+def test_dict_to_mapping_rejects_unknown_types():
+    with pytest.raises(TypeError, match="Unsupported field type"):
+        dict_to_mapping(
+            {"identifier": "OpaqueType"},
+            "auto",
+            {"text": [], "flattened": []},
+        )
+
+
+def test_dict_to_mapping_rejects_override_conflict(first_sample):
+    with pytest.raises(ValueError, match="both text and flattened"):
+        dict_to_mapping(
+            first_sample,
+            "object",
+            {"text": ["name"], "flattened": ["name"]},
+        )
+
+
+def test_legacy_auto_mode_maps_plain_submodel_to_object(first_sample):
+    mapping = dict_to_mapping(
+        first_sample, "auto", {"text": [], "flattened": []}
+    )
+
+    assert mapping["mappings"]["properties"]["address"]["type"] == "object"

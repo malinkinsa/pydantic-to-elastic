@@ -5,10 +5,14 @@ mappings_map = {
     'set[str]': 'keyword',
     'bool': 'boolean',
     'datetime': 'date',
+    'date': 'date',
+    'UUID': 'keyword',
+    'Decimal': 'double',
+    'bytes': 'binary',
     'list[dict]': 'nested',
     'list[str]': 'keyword',
     'list': 'keyword',
     'list[]': 'keyword',
     'dict': 'object',
+    'dict[str, Any]': 'object',
 }
-
